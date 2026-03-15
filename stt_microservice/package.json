@@ -1,0 +1,19 @@
+{
+  "name": "stt_microservice",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "deepspeech": "^0.9.3",
+    "express": "^4.17.3",
+    "nodemon": "^3.1.14"
+  }
+}
