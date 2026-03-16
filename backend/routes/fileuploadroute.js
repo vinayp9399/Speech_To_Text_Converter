@@ -22,61 +22,69 @@ router.post("/upload", requireAuth, fileupload.single("myfile"), async (req, res
       return res.status(400).json({ error: "No file uploaded" });
     }
 
-    const { userId } = req.user; // injected by requireAuth middleware
-    const inputPath   = path.resolve(req.file.path);
-    const outputPath  = inputPath.replace(path.extname(inputPath), "_converted.wav");
+    const { userId } = req.user;
+    const inputPath = path.resolve(req.file.path);
+    const outputPath = inputPath.replace(path.extname(inputPath), "_converted.wav");
 
-    // ── Step 1: Convert to DeepSpeech-compatible WAV ──────────────────────
-    await new Promise((resolve, reject) => {
-      ffmpeg(inputPath)
-        .outputOptions(["-ar 16000", "-ac 1", "-c:a pcm_s16le"])
-        .on("error", reject)
-        .on("end",   resolve)
-        .save(outputPath);
-    });
+    // 1. Respond to the frontend IMMEDIATELY (Status 202: Accepted)
+    // This prevents the 502/504 timeout error.
+    res.status(202).json({ message: "Processing started" });
 
-    // ── Step 2: Call STT microservice ──────────────────────────────────────
-    const sttResponse = await axios.post("https://speech-to-text-converter-hez1.onrender.com/process", {
-      filePath: outputPath,
-    });
-    const transcriptionText = sttResponse.data.text;
+    // 2. Wrap the heavy logic in a self-executing background function
+    (async () => {
+      try {
+        // Step 1: FFmpeg Conversion
+        await new Promise((resolve, reject) => {
+          ffmpeg(inputPath)
+            .outputOptions(["-ar 16000", "-ac 1", "-c:a pcm_s16le"])
+            .on("error", reject)
+            .on("end", resolve)
+            .save(outputPath);
+        });
 
-    // ── Step 3: Upload original file bytes to Convex File Storage ─────────
-    const fileBuffer = fs.readFileSync(inputPath);
-    const uploadUrl  = await convex.mutation(api.audioFiles.generateUploadUrl);
+        // Step 2: STT Microservice
+        const sttResponse = await axios.post("https://speech-to-text-converter-hez1.onrender.com/process", {
+          filePath: outputPath,
+        });
+        const transcriptionText = sttResponse.data.text;
 
-    const storageRes = await axios.post(uploadUrl, fileBuffer, {
-      headers: { "Content-Type": req.file.mimetype },
-      maxBodyLength: Infinity,
-    });
-    const storageId = storageRes.data.storageId;
+        // Step 3: Convex Upload (Directly stream from disk to save RAM)
+        const uploadUrl = await convex.mutation(api.audioFiles.generateUploadUrl);
+        const fileStream = fs.createReadStream(inputPath); // Use stream instead of readFileSync
 
-    // ── Step 4: Save audio file metadata to Convex ─────────────────────────
-    const audioFileId = await convex.mutation(api.audioFiles.create, {
-      userId,
-      storageId,
-      filename:  req.file.originalname,
-      mimeType:  req.file.mimetype,
-      sizeBytes: req.file.size,
-    });
+        const storageRes = await axios.post(uploadUrl, fileStream, {
+          headers: { "Content-Type": req.file.mimetype },
+          maxBodyLength: Infinity,
+        });
+        const storageId = storageRes.data.storageId;
 
-    // ── Step 5: Save transcript to Convex ─────────────────────────────────
-    const transcriptId = await convex.mutation(api.transcripts.create, {
-      userId,
-      audioFileId,
-      text: transcriptionText,
-    });
+        // Step 4: Finalize in Convex
+        const audioFileId = await convex.mutation(api.audioFiles.create, {
+          userId,
+          storageId,
+          filename: req.file.originalname,
+          mimeType: req.file.mimetype,
+          sizeBytes: req.file.size,
+        });
 
-    // ── Step 6: Cleanup temp files ─────────────────────────────────────────
-    fs.unlink(inputPath,  () => {});
-    fs.unlink(outputPath, () => {});
+        await convex.mutation(api.transcripts.create, {
+          userId,
+          audioFileId,
+          text: transcriptionText,
+        });
 
-    return res.json({ transcription: transcriptionText, audioFileId, transcriptId });
+      } catch (bgError) {
+        console.error("Background Processing Error:", bgError.message);
+      } finally {
+        // Step 6: Guaranteed Cleanup
+        if (fs.existsSync(inputPath)) fs.unlink(inputPath, () => {});
+        if (fs.existsSync(outputPath)) fs.unlink(outputPath, () => {});
+      }
+    })();
 
   } catch (error) {
-    if (req.file) fs.unlink(path.resolve(req.file.path), () => {});
-    console.error("[/file/upload]", error.message);
-    return res.status(500).json({ error: "Failed to process audio" });
+    console.error("[/file/upload] Initial Error:", error.message);
+    return res.status(500).json({ error: "Failed to initiate process" });
   }
 });
 
