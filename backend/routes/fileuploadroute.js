@@ -18,79 +18,63 @@ const { api }             = require("../convex/_generated/api");
 // Protected: requires a valid Bearer JWT
 router.post("/upload", requireAuth, fileupload.single("myfile"), async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: "No file uploaded" });
-    }
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
     const { userId } = req.user;
     const inputPath = path.resolve(req.file.path);
     const outputPath = inputPath.replace(path.extname(inputPath), "_converted.wav");
 
-    // 1. Respond immediately to prevent Render 502 timeout
-    res.status(202).json({ message: "Processing started" });
+    // Step A: Convert to Vosk-compatible WAV
+    await new Promise((resolve, reject) => {
+      ffmpeg(inputPath)
+        .outputOptions(["-ar 16000", "-ac 1", "-c:a pcm_s16le"])
+        .on("error", reject)
+        .on("end", resolve)
+        .save(outputPath);
+    });
 
-    // 2. Run heavy logic in the background
-    (async () => {
-      try {
-        // Step A: Convert to DeepSpeech-compatible WAV
-        await new Promise((resolve, reject) => {
-          ffmpeg(inputPath)
-            .outputOptions(["-ar 16000", "-ac 1", "-c:a pcm_s16le"])
-            .on("error", reject)
-            .on("end", resolve)
-            .save(outputPath);
-        });
+    // Step B: Upload to Convex (for storage)
+    const uploadUrl = await convex.mutation(api.audioFiles.generateUploadUrl);
+    const fileStream = fs.createReadStream(outputPath);
+    const storageRes = await axios.post(uploadUrl, fileStream, {
+      headers: { "Content-Type": "audio/wav" },
+    });
+    const storageId = storageRes.data.storageId;
 
-        // Step B: Upload the CONVERTED file to Convex Storage
-        const uploadUrl = await convex.mutation(api.audioFiles.generateUploadUrl);
-        const fileStream = fs.createReadStream(outputPath);
+    // Step C: Get Public URL
+    const publicUrl = await convex.query(api.audioFiles.getUrl, { storageId });
 
-        const storageRes = await axios.post(uploadUrl, fileStream, {
-          headers: { "Content-Type": "audio/wav" },
-        });
-        const storageId = storageRes.data.storageId;
+    // Step D: Call Vosk Microservice
+    // We wait (await) for this to finish
+    const sttResponse = await axios.post("https://speech-to-text-converter-hez1.onrender.com/process", {
+      fileUrl: publicUrl,
+    }, { timeout: 120000 });
 
-        // Step C: Get the Public URL for the Microservice
-        // Ensure you have a 'getUrl' query in your Convex audioFiles file
-        const publicUrl = await convex.query(api.audioFiles.getUrl, { storageId });
+    const transcriptionText = sttResponse.data.text || "[No speech detected]";
 
-        // Step D: Call STT microservice with the URL
-        const sttResponse = await axios.post("https://speech-to-text-converter-hez1.onrender.com/process", {
-          fileUrl: publicUrl, // Sending URL instead of local path
-        }, { timeout: 60000 }); // 60s timeout for DeepSpeech processing
+    // Step E: Save metadata to Convex (Optional, but good for history)
+    await convex.mutation(api.audioFiles.create, {
+      userId,
+      storageId,
+      filename: req.file.originalname,
+      mimeType: "audio/wav",
+      sizeBytes: fs.statSync(outputPath).size,
+    });
 
-        const transcriptionText = sttResponse.data.text;
+    // --- CLEANUP ---
+    if (fs.existsSync(inputPath)) fs.unlink(inputPath, () => {});
+    if (fs.existsSync(outputPath)) fs.unlink(outputPath, () => {});
 
-        // Step E: Save metadata and transcription to Convex
-        const audioFileId = await convex.mutation(api.audioFiles.create, {
-          userId,
-          storageId,
-          filename: req.file.originalname,
-          mimeType: "audio/wav",
-          sizeBytes: fs.statSync(outputPath).size,
-        });
-
-        await convex.mutation(api.transcripts.create, {
-          userId,
-          audioFileId,
-          text: transcriptionText,
-        });
-
-        console.log("✅ Transcription Complete:", transcriptionText);
-        res.status(500).json({ transcription: transcriptionText });
-
-      } catch (bgError) {
-        console.error("Background Processing Error:", bgError.message);
-      } finally {
-        // Step F: Cleanup local temp files
-        if (fs.existsSync(inputPath)) fs.unlink(inputPath, () => {});
-        if (fs.existsSync(outputPath)) fs.unlink(outputPath, () => {});
-      }
-    })();
+    // --- FINAL RESPONSE ---
+    // The frontend receives this as the direct answer to its POST request
+    return res.status(200).json({ 
+      success: true,
+      transcription: transcriptionText 
+    });
 
   } catch (error) {
-    console.error("[/file/upload] Initial Error:", error.message);
-    return res.status(500).json({ error: "Failed to initiate process" });
+    console.error("Transcription Error:", error.message);
+    return res.status(500).json({ error: "Transcription failed: " + error.message });
   }
 });
 
