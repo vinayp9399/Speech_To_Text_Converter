@@ -61,6 +61,12 @@ router.post("/upload", requireAuth, fileupload.single("myfile"), async (req, res
       sizeBytes: fs.statSync(outputPath).size,
     });
 
+    await convex.mutation(api.transcripts.create, {
+      userId,
+      audioFileId,
+      text: transcriptionText,
+    });
+
     // --- CLEANUP ---
     if (fs.existsSync(inputPath)) fs.unlink(inputPath, () => {});
     if (fs.existsSync(outputPath)) fs.unlink(outputPath, () => {});
