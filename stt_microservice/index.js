@@ -1,54 +1,51 @@
-// 1. POLYFILL: Must be at the very top for Node v14 compatibility
-// if (!Object.hasOwn) {
-//     Object.hasOwn = (obj, prop) => Object.prototype.hasOwnProperty.call(obj, prop);
-// }
-
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const DeepSpeech = require('deepspeech');
+const axios = require('axios'); // Add axios for downloading
 
 const app = express();
 app.use(express.json());
 
-// 2. PATH SETUP: Use absolute paths to avoid "Path Not Found" errors
 const modelPath = path.join(__dirname, 'models', 'deepspeech-0.9.3-models.pbmm');
 const scorerPath = path.join(__dirname, 'models', 'deepspeech-0.9.3-models.scorer');
 
-console.log("Loading model from:", modelPath);
-
-// 3. INITIALIZE DEEPSPEECH
 let model;
 try {
     model = new DeepSpeech.Model(modelPath);
     model.enableExternalScorer(scorerPath);
     console.log("✅ DeepSpeech Model & Scorer Loaded Successfully");
 } catch (error) {
-    console.error("❌ Model Loading Failed. Check if files exist in /models folder.");
-    console.error(error);
-    process.exit(1); // Stop if model fails to load
+    console.error("❌ Model Loading Failed. Ensure models are in the /models folder.");
+    process.exit(1); 
 }
 
-app.post('/process', (req, res) => {
-    const { filePath } = req.body;
+// Fixed Route: Accept a URL instead of a local Path
+app.post('/process', async (req, res) => {
+    const { fileUrl } = req.body; 
 
-    if (!filePath || !fs.existsSync(filePath)) {
-        return res.status(404).json({ error: "Audio file not found at: " + filePath });
+    if (!fileUrl) {
+        return res.status(400).json({ error: "No fileUrl provided" });
     }
 
     try {
-        const buffer = fs.readFileSync(filePath);
+        // Download the audio from Convex directly into memory
+        const response = await axios.get(fileUrl, { responseType: 'arraybuffer' });
+        const buffer = Buffer.from(response.data);
         
-        // Skip the 44-byte WAV header to get raw 16-bit PCM data
+        // Skip the 44-byte WAV header for raw 16-bit PCM
         const audioBuffer = buffer.slice(44); 
 
         const result = model.stt(audioBuffer);
         res.json({ text: result });
     } catch (err) {
-        console.error("STT Error:", err);
-        res.status(500).json({ error: "Speech-to-text processing failed" });
+        console.error("STT Error:", err.message);
+        res.status(500).json({ error: "Processing failed: " + err.message });
     }
 });
 
-const PORT = 5001;
-app.listen(PORT, '0.0.0.0', () => console.log(`🚀 STT Microservice active on port ${PORT}`));
+// Fixed Port: Use process.env.PORT for Render compatibility
+const PORT = process.env.PORT || 5001;
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 STT Microservice active on port ${PORT}`);
+});

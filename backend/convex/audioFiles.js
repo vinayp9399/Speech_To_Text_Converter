@@ -57,3 +57,10 @@ export const remove = mutation({
 export const generateUploadUrl = mutation({
   handler: async (ctx) => ctx.storage.generateUploadUrl(),
 });
+
+export const getUrl = query({
+  args: { storageId: v.id("_storage") },
+  handler: async (ctx, { storageId }) => {
+    return await ctx.storage.getUrl(storageId);
+  },
+});

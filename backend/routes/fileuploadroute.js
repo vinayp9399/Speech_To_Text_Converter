@@ -26,14 +26,13 @@ router.post("/upload", requireAuth, fileupload.single("myfile"), async (req, res
     const inputPath = path.resolve(req.file.path);
     const outputPath = inputPath.replace(path.extname(inputPath), "_converted.wav");
 
-    // 1. Respond to the frontend IMMEDIATELY (Status 202: Accepted)
-    // This prevents the 502/504 timeout error.
+    // 1. Respond immediately to prevent Render 502 timeout
     res.status(202).json({ message: "Processing started" });
 
-    // 2. Wrap the heavy logic in a self-executing background function
+    // 2. Run heavy logic in the background
     (async () => {
       try {
-        // Step 1: FFmpeg Conversion
+        // Step A: Convert to DeepSpeech-compatible WAV
         await new Promise((resolve, reject) => {
           ffmpeg(inputPath)
             .outputOptions(["-ar 16000", "-ac 1", "-c:a pcm_s16le"])
@@ -42,29 +41,33 @@ router.post("/upload", requireAuth, fileupload.single("myfile"), async (req, res
             .save(outputPath);
         });
 
-        // Step 2: STT Microservice
-        const sttResponse = await axios.post("https://speech-to-text-converter-hez1.onrender.com/process", {
-          filePath: outputPath,
-        });
-        const transcriptionText = sttResponse.data.text;
-
-        // Step 3: Convex Upload (Directly stream from disk to save RAM)
+        // Step B: Upload the CONVERTED file to Convex Storage
         const uploadUrl = await convex.mutation(api.audioFiles.generateUploadUrl);
-        const fileStream = fs.createReadStream(inputPath); // Use stream instead of readFileSync
+        const fileStream = fs.createReadStream(outputPath);
 
         const storageRes = await axios.post(uploadUrl, fileStream, {
-          headers: { "Content-Type": req.file.mimetype },
-          maxBodyLength: Infinity,
+          headers: { "Content-Type": "audio/wav" },
         });
         const storageId = storageRes.data.storageId;
 
-        // Step 4: Finalize in Convex
+        // Step C: Get the Public URL for the Microservice
+        // Ensure you have a 'getUrl' query in your Convex audioFiles file
+        const publicUrl = await convex.query(api.audioFiles.getUrl, { storageId });
+
+        // Step D: Call STT microservice with the URL
+        const sttResponse = await axios.post("https://speech-to-text-converter-hez1.onrender.com/process", {
+          fileUrl: publicUrl, // Sending URL instead of local path
+        }, { timeout: 60000 }); // 60s timeout for DeepSpeech processing
+
+        const transcriptionText = sttResponse.data.text;
+
+        // Step E: Save metadata and transcription to Convex
         const audioFileId = await convex.mutation(api.audioFiles.create, {
           userId,
           storageId,
           filename: req.file.originalname,
-          mimeType: req.file.mimetype,
-          sizeBytes: req.file.size,
+          mimeType: "audio/wav",
+          sizeBytes: fs.statSync(outputPath).size,
         });
 
         await convex.mutation(api.transcripts.create, {
@@ -73,10 +76,12 @@ router.post("/upload", requireAuth, fileupload.single("myfile"), async (req, res
           text: transcriptionText,
         });
 
+        console.log("✅ Transcription Complete:", transcriptionText);
+
       } catch (bgError) {
         console.error("Background Processing Error:", bgError.message);
       } finally {
-        // Step 6: Guaranteed Cleanup
+        // Step F: Cleanup local temp files
         if (fs.existsSync(inputPath)) fs.unlink(inputPath, () => {});
         if (fs.existsSync(outputPath)) fs.unlink(outputPath, () => {});
       }
