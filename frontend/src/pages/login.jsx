@@ -16,8 +16,8 @@ function Login() {
     setLoading(true)
 
     const endpoint = mode === 'login'
-      ? 'http://localhost:5000/auth/login'
-      : 'http://localhost:5000/auth/register'
+      ? 'https://speech-to-text-converter-backend.onrender.com/auth/login'
+      : 'https://speech-to-text-converter-backend.onrender.com/auth/register'
 
     try {
       const response = await axios.post(endpoint, { email, password })

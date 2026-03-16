@@ -22,7 +22,7 @@ function Home() {
     if (!localStorage.getItem('token')) {
       navigate('/login')
     }
-    axios.get('http://localhost:5000/file/history', { headers: { ...authHeader() } }).then((res)=>{
+    axios.get('https://speech-to-text-converter-backend.onrender.com/file/history', { headers: { ...authHeader() } }).then((res)=>{
       settranscripts(res.data.history)
       console.log(transcripts.transcript)
     })
@@ -55,7 +55,7 @@ function Home() {
 
     try {
       const response = await axios.post(
-        'http://localhost:5000/file/upload',
+        'https://speech-to-text-converter-backend.onrender.com/file/upload',
         formData,
         { headers: { 'Content-Type': 'multipart/form-data', ...authHeader() } }
       )
@@ -107,7 +107,7 @@ function Home() {
 
     try {
       const response = await axios.post(
-        'http://localhost:5000/file/upload',
+        'https://speech-to-text-converter-backend.onrender.com/file/upload',
         formData,
         { headers: { 'Content-Type': 'multipart/form-data', ...authHeader() } }
       )
