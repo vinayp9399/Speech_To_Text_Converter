@@ -33,7 +33,7 @@ router.post("/upload", requireAuth, fileupload.single("myfile"), async (req, res
     });
 
     // ── Step 2: Call STT microservice ──────────────────────────────────────
-    const sttResponse = await axios.post("http://localhost:5001/process", {
+    const sttResponse = await axios.post("https://speech-to-text-converter-hez1.onrender.com/process", {
       filePath: outputPath,
     });
     const transcriptionText = sttResponse.data.text;

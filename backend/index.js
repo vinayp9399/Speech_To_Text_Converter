@@ -16,6 +16,6 @@ app.get('/', (req, res) => {
   res.json({ name: 'Speech to text converter backend' })
 })
 
-app.listen(process.env.PORT, () => {
+app.listen(process.env.PORT, '0.0.0.0', () => {
   console.log('Listening at port ' + process.env.PORT)
 })
