@@ -53,7 +53,7 @@ router.post("/upload", requireAuth, fileupload.single("myfile"), async (req, res
     const transcriptionText = sttResponse.data.text || "[No speech detected]";
 
     // Step E: Save metadata to Convex (Optional, but good for history)
-    await convex.mutation(api.audioFiles.create, {
+    const audioFileId = await convex.mutation(api.audioFiles.create, {
       userId,
       storageId,
       filename: req.file.originalname,
