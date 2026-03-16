@@ -22,25 +22,37 @@ try {
 
 // Fixed Route: Accept a URL instead of a local Path
 app.post('/process', async (req, res) => {
-    const { fileUrl } = req.body; 
+    const { fileUrl } = req.body;
+    if (!fileUrl) return res.status(400).json({ error: "No fileUrl provided" });
 
-    if (!fileUrl) {
-        return res.status(400).json({ error: "No fileUrl provided" });
+    let response;
+    let attempts = 0;
+    const maxAttempts = 3;
+
+    // Retry loop to handle Convex indexing delays
+    while (attempts < maxAttempts) {
+        try {
+            response = await axios.get(fileUrl, { responseType: 'arraybuffer' });
+            break; // Success! Exit the loop
+        } catch (err) {
+            attempts++;
+            if (err.response && err.response.status === 404 && attempts < maxAttempts) {
+                console.log(`⚠️ File not ready (404). Retry attempt ${attempts}...`);
+                await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+            } else {
+                console.error("❌ STT Download Error:", err.message);
+                return res.status(err.response?.status || 500).json({ error: "Download failed" });
+            }
+        }
     }
 
     try {
-        // Download the audio from Convex directly into memory
-        const response = await axios.get(fileUrl, { responseType: 'arraybuffer' });
         const buffer = Buffer.from(response.data);
-        
-        // Skip the 44-byte WAV header for raw 16-bit PCM
-        const audioBuffer = buffer.slice(44); 
-
+        const audioBuffer = buffer.slice(44); // Skip WAV header
         const result = model.stt(audioBuffer);
         res.json({ text: result });
     } catch (err) {
-        console.error("STT Error:", err.message);
-        res.status(500).json({ error: "Processing failed: " + err.message });
+        res.status(500).json({ error: "Transcription failed" });
     }
 });
 
