@@ -3,8 +3,11 @@ const express   = require("express");
 const router    = express.Router();
 const path      = require("path");
 const fs        = require("fs");
+const ffmpegPath = require('ffmpeg-static');
 const ffmpeg    = require("fluent-ffmpeg");
 const axios     = require("axios");
+
+ffmpeg.setFfmpegPath(ffmpegPath);
 
 const fileupload          = require("../middlewares/fileupload");
 const { requireAuth }     = require("../middlewares/requireAuth");
