@@ -1,63 +1,43 @@
 const express = require('express');
-const fs = require('fs');
+const cors = require('cors');
+const axios = require('axios');
+const vosk = require('vosk');
 const path = require('path');
-const DeepSpeech = require('deepspeech');
-const axios = require('axios'); // Add axios for downloading
+const fs = require('fs');
 
 const app = express();
+app.use(cors());
 app.use(express.json());
 
-const modelPath = path.join(__dirname, 'models', 'deepspeech-0.9.3-models.pbmm');
-const scorerPath = path.join(__dirname, 'models', 'deepspeech-0.9.3-models.scorer');
-
-let model;
-try {
-    model = new DeepSpeech.Model(modelPath);
-    model.enableExternalScorer(scorerPath);
-    console.log("✅ DeepSpeech Model & Scorer Loaded Successfully");
-} catch (error) {
-    console.error("❌ Model Loading Failed. Ensure models are in the /models folder.");
-    process.exit(1); 
+// Load Vosk Model
+const MODEL_PATH = path.join(__dirname, 'model');
+if (!fs.existsSync(MODEL_PATH)) {
+    console.error("❌ Model folder missing! Download vosk-model-small-en-us and rename to 'model'");
+    process.exit(1);
 }
 
-// Fixed Route: Accept a URL instead of a local Path
+const model = new vosk.Model(MODEL_PATH);
+console.log("✅ Vosk Model Loaded");
+
 app.post('/process', async (req, res) => {
     const { fileUrl } = req.body;
-    if (!fileUrl) return res.status(400).json({ error: "No fileUrl provided" });
-
-    let response;
-    let attempts = 0;
-    const maxAttempts = 3;
-
-    // Retry loop to handle Convex indexing delays
-    while (attempts < maxAttempts) {
-        try {
-            response = await axios.get(fileUrl, { responseType: 'arraybuffer' });
-            break; // Success! Exit the loop
-        } catch (err) {
-            attempts++;
-            if (err.response && err.response.status === 404 && attempts < maxAttempts) {
-                console.log(`⚠️ File not ready (404). Retry attempt ${attempts}...`);
-                await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
-            } else {
-                console.error("❌ STT Download Error:", err.message);
-                return res.status(err.response?.status || 500).json({ error: "Download failed" });
-            }
-        }
-    }
+    if (!fileUrl) return res.status(400).json({ error: "Missing fileUrl" });
 
     try {
-        const buffer = Buffer.from(response.data);
-        const audioBuffer = buffer.slice(44); // Skip WAV header
-        const result = model.stt(audioBuffer);
-        res.json({ text: result });
+        const response = await axios.get(fileUrl, { responseType: 'arraybuffer' });
+        const recognizer = new vosk.Recognizer({ model: model, sampleRate: 16000 });
+        
+        // Feed audio buffer (skipping header if necessary)
+        recognizer.acceptWaveform(Buffer.from(response.data));
+        const result = recognizer.result();
+        
+        recognizer.free();
+        res.json({ text: result.text });
     } catch (err) {
+        console.error("STT Error:", err.message);
         res.status(500).json({ error: "Transcription failed" });
     }
 });
 
-// Fixed Port: Use process.env.PORT for Render compatibility
 const PORT = process.env.PORT || 5001;
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 STT Microservice active on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`🚀 STT Service on port ${PORT}`));
