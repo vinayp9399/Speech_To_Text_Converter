@@ -77,6 +77,7 @@ router.post("/upload", requireAuth, fileupload.single("myfile"), async (req, res
         });
 
         console.log("✅ Transcription Complete:", transcriptionText);
+        res.status(500).json({ transcription: transcriptionText });
 
       } catch (bgError) {
         console.error("Background Processing Error:", bgError.message);
