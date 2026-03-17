@@ -39,5 +39,7 @@ app.post('/process', async (req, res) => {
     }
 });
 
+app.get("/ping", (req, res) => res.status(200).send("awake"));
+
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => console.log(`🚀 STT Service on port ${PORT}`));
