@@ -161,7 +161,7 @@ function Home() {
                 </button>
               </div>
 
-              <div className="flex gap-4">
+              <div className="flex flex-col gap-4 md:flex-row md:gap-8">
 
                 {/* Upload panel */}
                 {task === 'upload' && (
@@ -202,7 +202,7 @@ function Home() {
 
                 {/* Loading skeleton */}
                 {isLoading && (
-                  <div className="mx-auto w-full max-w-sm rounded-md border border-blue-300 p-4">
+                  <div className="mx-auto w-100 max-w-sm rounded-md border border-blue-300 p-4">
                     <div className="flex animate-pulse space-x-4">
                       <div className="flex-1 space-y-6 py-1">
                         <div className="space-y-3">
@@ -217,14 +217,14 @@ function Home() {
 
                 {/* Error message */}
                 {!isLoading && errorMsg && (
-                  <div className="mx-auto w-full max-w-sm rounded-md border border-red-400 p-2">
+                  <div className="mx-auto w-100 max-w-sm rounded-md border border-red-400 p-2">
                     <p className="text-sm text-red-400 p-3">{errorMsg}</p>
                   </div>
                 )}
 
                 {/* Transcription result */}
                 {!isLoading && !errorMsg && (
-                  <div className="mx-auto w-full max-w-sm rounded-md border border-blue-300 p-2">
+                  <div className="mx-auto w-100 max-w-sm rounded-md border border-blue-300 p-2">
                     <div className="flex space-x-4">
                       <div className="flex-1 space-y-6 p-3">
                         <div className="space-y-3">{text}</div>
