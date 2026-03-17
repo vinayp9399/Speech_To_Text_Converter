@@ -21,15 +21,16 @@ app.listen(process.env.PORT, '0.0.0.0', () => {
   console.log('Listening at port ' + process.env.PORT)
 })
 
-// Every 14 minutes, send a request to the STT service
+// Update your backend code
 setInterval(async () => {
-try {
-  const response = await axios.get(STT_SERVICE_URL);
-  console.log(`Microservice Heartbeat: ${response.data}`);
-} catch (error) {
-  console.error("Heartbeat failed: STT service might be restarting or down.");
-}
-}, 14 * 60 * 1000);
+  try {
+    // 60-second timeout gives Render time to finish "Building"
+    const response = await axios.get(STT_SERVICE_URL, { timeout: 60000 }); 
+    console.log(`✅ Heartbeat Success: ${response.data}`);
+  } catch (error) {
+    console.error("❌ Heartbeat failed: STT is still waking up or crashing.");
+  }
+}, 10 * 60 * 1000); // 10 minutes
 
 
 
