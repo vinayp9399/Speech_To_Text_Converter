@@ -1,4 +1,4 @@
-Full-Stack AI Speech Management System
+Full-Stack AI Speech to Text Converter
 
 A professional MERN stack application featuring a dedicated AI Speech-to-Text (STT) Microservice. This project demonstrates a decoupled architecture, high-performance audio processing using Vosk AI.
 
@@ -35,13 +35,13 @@ Project Setup & Installation
 1. STT Microservice Setup
 cd stt_microservice
 npm install
-# Ensure the 'model' folder contains the Vosk Small English Model files
+(Ensure the 'model' folder contains the Vosk Small English Model files)
 npm start
 
 2. Main Backend Setup
 cd backend
 npm install
-# Add your MONGO_URI and STT_SERVICE_URL to your .env file
+(Add your MONGO_URI and STT_SERVICE_URL to your .env file)
 npm run dev
 
 3. Frontend Setup
