@@ -2,13 +2,14 @@ Full-Stack AI Speech to Text Converter
 
 A professional MERN stack application featuring a dedicated AI Speech-to-Text (STT) Microservice. This project demonstrates a decoupled architecture, high-performance audio processing using Vosk AI.
 
+Live Project link- https://sttconverter.vercel.app/
 
 System Architecture-
 
 The project is split into three distinct layers to ensure scalability and to manage heavy AI workloads without blocking the main user API.
 
 1. Frontend (React + Tailwind): Modern UI for recording, uploading, and managing transcriptions.
-2. Main Backend (Node.js + Express + MongoDB): Handles metadata, user history, and acts as a "Babysitter" for the microservice.
+2. Main Backend (Node.js + Express + MongoDB): Handles metadata, user history, and calls the microservice for STT conversion.
 3. STT Microservice (Node.js + Vosk AI + FFmpeg): A dedicated engine that converts raw audio into text using localized machine learning models.
 
 
