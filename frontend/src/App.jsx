@@ -9,7 +9,6 @@ function App() {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/login" element={<Login />} />
-      {/* Catch-all → home */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

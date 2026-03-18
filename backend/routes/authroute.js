@@ -1,15 +1,12 @@
-// routes/authroute.js
 const express = require("express");
 const bcrypt  = require("bcrypt");
 const router  = express.Router();
-
-const { convex }     = require("../lib/convexClient");
-const { signToken }  = require("../lib/jwt");
-const { api }        = require("../convex/_generated/api");
-
+const { convex } = require("../lib/convexClient");
+const { signToken } = require("../lib/jwt");
+const { api } = require("../convex/_generated/api");
 const SALT_ROUNDS = 12;
 
-// ── POST /auth/register ────────────────────────────────────────────────────
+
 router.post("/register", async (req, res) => {
   const { email, password } = req.body;
 
@@ -40,7 +37,7 @@ router.post("/register", async (req, res) => {
   }
 });
 
-// ── POST /auth/login ───────────────────────────────────────────────────────
+
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
@@ -53,7 +50,6 @@ router.post("/login", async (req, res) => {
       email: email.toLowerCase().trim(),
     });
 
-    // Always run bcrypt to prevent timing-based user enumeration
     const hash = user ? user.passwordHash : "$2b$12$invalidhashpadding000000000000000000000000000000000000000";
     const match = await bcrypt.compare(password, hash);
 
@@ -70,7 +66,7 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// ── GET /auth/me ───────────────────────────────────────────────────────────
+
 // Lightweight token-check endpoint — useful for frontend session validation
 router.get("/me", async (req, res) => {
   const header = req.headers.authorization;

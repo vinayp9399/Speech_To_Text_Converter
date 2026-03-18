@@ -24,7 +24,6 @@ function Home() {
     }
     axios.get('https://speech-to-text-converter-backend.onrender.com/file/history', { headers: { ...authHeader() } }).then((res)=>{
       settranscripts(res.data.history)
-      console.log(transcripts.transcript)
     })
   }, [])
 
@@ -33,7 +32,7 @@ function Home() {
     Authorization: `Bearer ${localStorage.getItem('token')}`,
   })
 
-  // ── File upload ────────────────────────────────────────────────────────
+  // File upload
   const handleFileChange = (e) => {
     setFile(e.target.files[0])
     setText('')
@@ -41,7 +40,7 @@ function Home() {
   }
 
   const handleUpload = async (e) => {
-    e.preventDefault()   // ← prevents form submit / page reload
+    e.preventDefault()  
     if (!file) {
       setErrorMsg('Please select a file first')
       return
@@ -72,7 +71,7 @@ function Home() {
     }
   }
 
-  // ── Recording ──────────────────────────────────────────────────────────
+  // Recording
   const startRecording = async () => {
     setText('')
     setErrorMsg('')
@@ -124,7 +123,7 @@ function Home() {
     }
   }
 
-  // ── Tab switch ─────────────────────────────────────────────────────────
+  // Tab switch 
   const switchTask = (e, newTask) => {
     e.preventDefault()   // ← prevents form submit / page reload
     setTask(newTask)

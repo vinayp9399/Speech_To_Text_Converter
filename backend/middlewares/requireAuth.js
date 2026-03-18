@@ -1,11 +1,5 @@
-// middlewares/requireAuth.js
 const { verifyToken } = require("../lib/jwt");
 
-/**
- * Express middleware that validates a Bearer JWT.
- * On success it attaches `req.user = { userId, email }` and calls next().
- * On failure it returns 401.
- */
 function requireAuth(req, res, next) {
   const header = req.headers.authorization;
 

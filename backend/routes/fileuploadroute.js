@@ -1,21 +1,19 @@
-// routes/fileuploadroute.js
-const express   = require("express");
-const router    = express.Router();
-const path      = require("path");
-const fs        = require("fs");
+const express = require("express");
+const router = express.Router();
+const path = require("path");
+const fs = require("fs");
 const ffmpegPath = require('ffmpeg-static');
-const ffmpeg    = require("fluent-ffmpeg");
-const axios     = require("axios");
+const ffmpeg = require("fluent-ffmpeg");
+const axios = require("axios");
 
 ffmpeg.setFfmpegPath(ffmpegPath);
 
-const fileupload          = require("../middlewares/fileupload");
-const { requireAuth }     = require("../middlewares/requireAuth");
-const { convex }          = require("../lib/convexClient");
-const { api }             = require("../convex/_generated/api");
+const fileupload = require("../middlewares/fileupload");
+const { requireAuth } = require("../middlewares/requireAuth");
+const { convex } = require("../lib/convexClient");
+const { api } = require("../convex/_generated/api");
 
-// ── POST /file/upload ──────────────────────────────────────────────────────
-// Protected: requires a valid Bearer JWT
+
 router.post("/upload", requireAuth, fileupload.single("myfile"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
@@ -24,7 +22,7 @@ router.post("/upload", requireAuth, fileupload.single("myfile"), async (req, res
     const inputPath = path.resolve(req.file.path);
     const outputPath = inputPath.replace(path.extname(inputPath), "_converted.wav");
 
-    // Step A: Convert to Vosk-compatible WAV
+    // Step 1: Convert to Vosk-compatible WAV
     await new Promise((resolve, reject) => {
       ffmpeg(inputPath)
         .outputOptions(["-ar 16000", "-ac 1", "-c:a pcm_s16le"])
@@ -33,7 +31,7 @@ router.post("/upload", requireAuth, fileupload.single("myfile"), async (req, res
         .save(outputPath);
     });
 
-    // Step B: Upload to Convex (for storage)
+    // Step 2: Upload to Convex (for storage)
     const uploadUrl = await convex.mutation(api.audioFiles.generateUploadUrl);
     const fileStream = fs.createReadStream(outputPath);
     const storageRes = await axios.post(uploadUrl, fileStream, {
@@ -41,18 +39,17 @@ router.post("/upload", requireAuth, fileupload.single("myfile"), async (req, res
     });
     const storageId = storageRes.data.storageId;
 
-    // Step C: Get Public URL
+    // Step 3: Get Public URL
     const publicUrl = await convex.query(api.audioFiles.getUrl, { storageId });
 
-    // Step D: Call Vosk Microservice
-    // We wait (await) for this to finish
+    // Step 4: Call Vosk Microservice
     const sttResponse = await axios.post("https://speech-to-text-converter-hez1.onrender.com/process", {
       fileUrl: publicUrl,
     }, { timeout: 120000 });
 
     const transcriptionText = sttResponse.data.text || "[No speech detected]";
 
-    // Step E: Save metadata to Convex (Optional, but good for history)
+    // Step 5: Save metadata to Convex (Optional, but good for history)
     const audioFileId = await convex.mutation(api.audioFiles.create, {
       userId,
       storageId,
@@ -84,7 +81,7 @@ router.post("/upload", requireAuth, fileupload.single("myfile"), async (req, res
   }
 });
 
-// ── GET /file/history ──────────────────────────────────────────────────────
+
 // Returns all audio files + their transcripts for the logged-in user
 router.get("/history", requireAuth, async (req, res) => {
   try {
@@ -111,7 +108,7 @@ router.get("/history", requireAuth, async (req, res) => {
   }
 });
 
-// ── DELETE /file/:audioFileId ──────────────────────────────────────────────
+
 // Deletes a file record and its linked transcript (ownership enforced in Convex)
 router.delete("/:audioFileId", requireAuth, async (req, res) => {
   try {

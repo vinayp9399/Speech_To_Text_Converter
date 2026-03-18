@@ -12,12 +12,10 @@ app.use(express.json());
 // Load Vosk Model
 const MODEL_PATH = path.join(__dirname, 'model');
 if (!fs.existsSync(MODEL_PATH)) {
-    console.error("❌ Model folder missing! Download vosk-model-small-en-us and rename to 'model'");
     process.exit(1);
 }
 
 const model = new vosk.Model(MODEL_PATH);
-console.log("✅ Vosk Model Loaded");
 
 app.post('/process', async (req, res) => {
     const { fileUrl } = req.body;
@@ -39,7 +37,5 @@ app.post('/process', async (req, res) => {
     }
 });
 
-app.get("/ping", (req, res) => res.status(200).send("awake"));
-
 const PORT = process.env.PORT || 5001;
-app.listen(PORT, () => console.log(`🚀 STT Service on port ${PORT}`));
+app.listen(PORT, () => console.log(`STT Service on port ${PORT}`));

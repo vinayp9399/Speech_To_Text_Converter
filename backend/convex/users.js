@@ -1,4 +1,3 @@
-// convex/users.js
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
@@ -24,7 +23,7 @@ export const getById = query({
 // Create a new user — throws EMAIL_TAKEN if duplicate
 export const create = mutation({
   args: {
-    email:        v.string(),
+    email: v.string(),
     passwordHash: v.string(),
   },
   handler: async (ctx, { email, passwordHash }) => {
