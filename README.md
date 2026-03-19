@@ -1,51 +1,59 @@
-Full-Stack AI Speech to Text Converter
+AI Speech To Text Converter with Deepram AI
 
-A professional MERN stack application featuring a dedicated AI Speech-to-Text (STT) Microservice. This project demonstrates a decoupled architecture, high-performance audio processing using Vosk AI.
-
-Live Project link- https://sttconverter.vercel.app/
-
-System Architecture-
-
-The project is split into three distinct layers to ensure scalability and to manage heavy AI workloads without blocking the main user API.
-
-1. Frontend (React + Tailwind): Modern UI for recording, uploading, and managing transcriptions.
-2. Main Backend (Node.js + Express + MongoDB): Handles metadata, user history, and calls the microservice for STT conversion.
-3. STT Microservice (Node.js + Vosk AI + FFmpeg): A dedicated engine that converts raw audio into text using localized machine learning models.
+A high-performance MERN stack application that provides seamless audio-to-text transcription using the Deepgram AI API. This version is optimized for speed and reliability, utilizing cloud-native AI processing to deliver near-instant results.
 
 
-Tech Stack-
+System Architecture
+The project follows a streamlined Fullstack architecture, where the Node.js backend acts as a secure bridge between the user's audio data and the Deepgram AI engine.
 
-Frontend- React.js, Tailwind CSS, Axios
-Main Backend- Node.js, Express, Convex
-AI Microservice- Vosk AI Engine, FFmpeg, Node.js
+1. Frontend (React + Tailwind): A modern, responsive dashboard for recording, uploading, and viewing transcriptions.
+2. Backend (Node.js + Express + Convex): Manages user authentication, metadata storage, and secure communication with Deepgram.
+3. File Storage (Convex): Handles high-speed audio file hosting and retrieval.
+4. Deepgram AI: Cloud-based neural network (Nova-2 model) for high-accuracy speech recognition.
 
-Deployment- Vercel (Frontend), Render (Backend & Microservice)
+
+Tech Stack
+Frontend: React.js, Tailwind CSS, Axios
+Backend: Node.js, Express, Convex
+AI Processing: Deepgram SDK 
+Database/Storage: Convex (File Management)
+Deployment: Vercel (Frontend), Render (Backend)
 
 
-Key Features-
-
-* Offline AI Transcription: Utilizes Vosk for private, local speech recognition, eliminating external API latency and costs.
-* Audio Processing Pipeline: Integrated FFmpeg to normalize various audio formats to 16kHz Mono PCM, ensuring maximum transcription accuracy.
-* Memory Optimized: Specifically configured to run within a strict 512MB RAM limit using the `vosk-model-small-en-us` engine.
-* Responsive Dashboard: Clean UI for tracking transcription history with real-time status indicators.
-
+Key Features
+Cloud-Native Transcription: Powered by Deepgram’s latest models for industry-leading speed and accuracy.
+Format Agnostic: Automatically processes `.mp3`, `.wav`, `.m4a`, and other formats without the need for local FFmpeg dependencies.
+History Tracking: Securely stores every transcription in Convex for easy retrieval and management.
+Performance Optimized: Extremely lightweight backend footprint, staying well within Render’s 512MB RAM limit by offloading AI processing.
+Real-time Status: Provides immediate visual feedback during the upload and processing states.
 
 
 Project Setup & Installation
 
-1. STT Microservice Setup
-cd stt_microservice
-npm install
-(Ensure the 'model' folder contains the Vosk Small English Model files)
-npm start
+1. Prerequisites
+* A [Deepgram API Key](https://console.deepgram.com/).
+* A [Convex](https://www.convex.dev/) account for file storage and database.
 
-2. Main Backend Setup
+
+2. Backend Setup
+Navigate to the backend directory and install dependencies:
 cd backend
 npm install
-(Add your MONGO_URI and STT_SERVICE_URL to your .env file)
-npm run dev
+
+Create a .env file in the backend directory:
+PORT=5000
+MONGO_URI=your_mongodb_uri
+DEEPGRAM_API_KEY=your_deepgram_key
+CONVEX_DEPLOYMENT_URL=your_convex_url
+
+Start the development server:
+npm start
+
 
 3. Frontend Setup
+Navigate to the frontend directory and install dependencies:
+
+Bash
 cd frontend
 npm install
 npm run dev
@@ -53,9 +61,15 @@ npm run dev
 
 
 API Design
-Main Backend
-POST /api/upload: Handles file metadata and triggers the Microservice processing.
-GET /api/history: Fetches past transcriptions and status from MongoDB.
+1. POST /api/upload: Handles file metadata and triggers the Microservice processing.
+The primary endpoint for processing audio.
+Input: Receives a fileUrl or storageId.
+Logic: The backend initializes the Deepgram SDK, sends the audio source, and awaits the transcript.
+Output: Returns JSON containing the transcript, confidence levels, and metadata.
 
-STT Microservice
-POST /process: Receives audio data/URLs and returns a JSON transcript.
+2. GET /api/history: Fetches past transcriptions and status from MongoDB.
+Fetches the user's transcription history directly from the Convex database.
+
+
+Backend (Render)
+Frontend (Vercel)

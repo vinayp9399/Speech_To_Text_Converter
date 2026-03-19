@@ -47,7 +47,7 @@ router.post("/upload", requireAuth, fileupload.single("myfile"), async (req, res
     //   fileUrl: publicUrl,
     // }, { timeout: 120000 });
 
-
+    // Step 4: Call DeepGram api
     const sttResponse = await axios({
       method: 'post',
       url: 'https://api.deepgram.com/v1/listen?model=nova-3&smart_format=true',
