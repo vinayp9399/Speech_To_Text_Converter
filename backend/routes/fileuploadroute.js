@@ -43,11 +43,26 @@ router.post("/upload", requireAuth, fileupload.single("myfile"), async (req, res
     const publicUrl = await convex.query(api.audioFiles.getUrl, { storageId });
 
     // Step 4: Call Vosk Microservice
-    const sttResponse = await axios.post("https://speech-to-text-converter-hez1.onrender.com/process", {
-      fileUrl: publicUrl,
+    // const sttResponse = await axios.post("https://speech-to-text-converter-hez1.onrender.com/process", {
+    //   fileUrl: publicUrl,
+    // }, { timeout: 120000 });
+
+
+    const sttResponse = await axios({
+      method: 'post',
+      url: 'https://api.deepgram.com/v1/listen?model=nova-3&smart_format=true',
+      headers: {
+        'Authorization': `Token ${e9dd0c49f14c03d9171e2d9984dcb529c938b248}`
+        // 'Content-Type': 'application/json'
+      },
+      data: {
+        url: publicUrl
+      }
     }, { timeout: 120000 });
 
-    const transcriptionText = sttResponse.data.text || "[No speech detected]";
+    // const transcriptionText = sttResponse.data.text || "[No speech detected]";
+
+    const transcriptionText = sttResponse.data.results.channels[0].alternatives[0].transcript || "[No speech detected]";
 
     // Step 5: Save metadata to Convex (Optional, but good for history)
     const audioFileId = await convex.mutation(api.audioFiles.create, {
