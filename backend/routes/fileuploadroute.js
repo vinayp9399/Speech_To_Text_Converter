@@ -52,8 +52,8 @@ router.post("/upload", requireAuth, fileupload.single("myfile"), async (req, res
       method: 'post',
       url: 'https://api.deepgram.com/v1/listen?model=nova-3&smart_format=true',
       headers: {
-        'Authorization': `Token ${e9dd0c49f14c03d9171e2d9984dcb529c938b248}`
-        // 'Content-Type': 'application/json'
+        'Authorization': "Token e9dd0c49f14c03d9171e2d9984dcb529c938b248",
+        'Content-Type': 'application/json'
       },
       data: {
         url: publicUrl
