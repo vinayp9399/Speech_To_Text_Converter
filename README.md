@@ -1,5 +1,7 @@
 # AI Speech To Text Converter with Deepram AI
 
+Live Link- https://sttconverter.vercel.app/
+
 ## Problem Statement: 
 In modern business, "voice data" is often lost data. In sectors like Telemedicine, Law, and Customer Support, critical details shared in spoken conversation frequently vanish because manual note-taking is slow and prone to error. Furthermore, scaling AI-driven transcription is traditionally expensive; hosting heavy machine learning models like Whisper requires high-cost GPU infrastructure that many startups and independent developers cannot afford on restricted cloud budgets.
 
